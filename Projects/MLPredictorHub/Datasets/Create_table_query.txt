@@ -1,0 +1,14 @@
+CREATE TABLE predictions (
+    id SERIAL PRIMARY KEY,
+    prediction_date TIMESTAMP NOT NULL,
+    pregnancies INTEGER NOT NULL,
+    glucose INTEGER NOT NULL,
+    blood_pressure INTEGER NOT NULL,
+    skin_thickness INTEGER NOT NULL,
+    insulin INTEGER NOT NULL,
+    bmi FLOAT NOT NULL,
+    pedigree_function FLOAT NOT NULL,
+    age INTEGER NOT NULL,
+    prediction_result FLOAT NOT NULL,
+    prediction_source VARCHAR(50) NOT NULL
+);
