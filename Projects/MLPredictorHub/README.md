@@ -1,69 +1,64 @@
-*** SmartPredict: End-to-End ML Prediction System with Monitoring and Dashboard ***
+# dsa_ninja_turtles
+Use Case:
+      In this project we focuses on developing a machine learning model to predict the likelihood of women above age of 21 having diabetes. The dataset used for this project is sourced from Kaggle, which contains various features related to health indicators and diagnostic measurements. The goal is to create a simple and accurate prediction model for diabetes without spending extensive time on the model development step.The ML-Powered Application will enable users to assess their risk of having diabetes by providing their health indicators and receiving predictions instantly
+Dataset:
+source: kaggle (https://www.kaggle.com/datasets/nancyalaswad90/review)
+Architecture: 1.User Interface: A web application developed using Streamlit, providing prediction and past prediction functionalities.  
+              2.Model Service (API): An API developed using FastAPI to serve the machine learning model, make predictions, and store predictions in the database.
+              3.ML model: Using decision tree for prediction 
+              3.Database: An SQL database (PostgreSQL) used to store past predictions, along with the features used for prediction.
+              4.Prediction Job: A scheduled job implemented using Airflow that periodically makes predictions on the ingested data.
+              5.Great expection:  Data validation (blood pressure, glucose, age)
+              6.Monitoring Dashboard: A Grafana dashboard to monitor data quality problems and model prediction issues.
+                                      Created two dashboard i) XY- plot for Age vs Peregnincies
+                                                            	        ii) Bar guage
+               7.Workflow: User-end :      i)Users can access the web application to make on-demand predictions by filling in the features for a single sample or                                                     uploading a CSV file for multiple predictions.
+                                           ii)The web application calls the model service API to retrieve predictions, which are then displayed to the user along with                                                the corresponding features used for the prediction.
+    
+                          Prediction-end:   i)New data files are ingested and validated for quality using tools like Great Expectations.
+                                            ii)Clean data files are stored, while files with data quality issues are flagged and saved in the database.
+                                            iii)The prediction job, running every 5 minutes, checks for new clean data files.
+                                            iv)The prediction job reads the clean data files and makes API calls to the model service for predictions.
+                                            v)Predictions are stored in the database, enabling access to the latest predictions and historical prediction data.
+Installation:
+            1.Install the dependencies: pip install -r requirements.txt
+            2.Application setup: streamlit run app.py
+            3.Airflow: pip install apache-airflow
+             Initialize the Airflow Database: airflow db init
+             Start the Airflow Web Server and Scheduler: airflow webserver --port 8080
+                                                         airflow scheduler
+             4.Great Expectations: pip install great_expectations
+             5.Visualization tool Grafana: Downloaded from offical website  
+                                            echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+                                            sudo apt-get install -y adduser libfontconfig1
+                                            wget https://dl.grafana.com/enterprise/release/grafana-enterprise_10.0.0_amd64.deb
+                                            sudo dpkg -i grafana-enterprise_10.0.0_amd64.deb
+                                            sudo yum install -y https://dl.grafana.com/enterprise/release/grafana-enterprise-10.0.0-1.x86_64.rpm
+                                            wget https://dl.grafana.com/enterprise/release/grafana-enterprise-10.0.0-1.x86_64.rpm
+                                            sudo rpm -Uvh grafana-enterprise-10.0.0-1.x86_64.rpm
+ Usage:
+      Prediction Webpage: Use this (streamlit - Diabetic predictor)webpage to make predictions.
+      i)Fill in the features for a single sample prediction using the provided form.
+      ii)In order to make multiple predictions,need to upload a CSV file containing the inference data (without labels).
+      and then Clicking the "Predict" button to make on-demand predictions, which will be displayed in the webapp along with the used features.
+      
+      Past Predictions Webpage: Use this webpage to view past predictions.   
+      i) Select the start and end dates for the predictions.
+      ii) Choose the prediction source from the drop-down list (webapp, scheduled predictions, or all).
+         View the past predictions along with the corresponding used features.
+       Visualzation: Using grafana Data Quality Monitoring, Model Performance Monitoring , Data Drift Detection , Dashboard Customization and Alerting and                                  Notifications
+         
+ API Endpoints:
+The model service (API) exposes the following endpoints:
+    i)POST /predict: Make model predictions by providing the necessary input features.
+    ii)GET /past-predictions: Retrieve past predictions along with the used features.
 
 
-Project requirement:
+             
+      
+      
+      
+     
 
-A user interface where the user can make on-demand predictions and view past predictions (streamlit)
-An API for exposing the ML model (FastAPI) and saving the predictions in the database
-An SQL database for saving data (predictions along with the used features, ...) (PostgreSQL, SQLAlchemy)
-A prediction job to make scheduled predictions each n mins (Airflow)
-An ingestion job to ingest and validate the data quality (great expectations, TensorFlow Data Validation)
-A monitoring dashboard to monitor data quality problems of the ingested data and the drift of training and serving data (Grafana)
-These components will interact as shown in this architecture:
 
-Project architecture
 
-User interface
-Should be composed of 2 webpages: one for the user to make predictions and another one to display past predictions
-
-Prediction page
-Should contain:
-
-A form to fill in the features for a single sample prediction.
-An upload button to upload a csv file for making multiple predictions: the file should contain the inference data in the correct format without labels 
-A predict button to make on-demand predictions by calling the model API service
-Note: when predictions are returned by the model service (API), they need to be displayed in the webapp along with the features used for making the prediction
-
-Past predictions display webpage
-Should contain:
-
-A date selection component to select the start and end date of the predictions
-A prediction source drop list to select the source of the predictions to retrieve
-webapp: to show only predictions made using the webapp
-scheduled predictions: to show predictions made using the prediction job
-all: to show predictions made from the webapp or the prediction job
-Model service (API)
-An API for:
-
-serving the model (making predictions)
-saving the model predictions and used features in the database
-returning past predictions and used features to the webapp
-It should contain the following endpoints:
-
-predict: for making model predictions from the the webapp or the prediction job
-past-predictions: to get the model past predictions along with the used features
-Database
-It will be used by multiple components:
-
-The model service to save the model predictions and query them
-The data ingestion job to save data quality problems
-The dashboard to display data quality problems and data drift
-Prediction job
-This job will be used to make scheduled predictions. It will executed each n minutes.
-
-It should be composed of 2 tasks:
-
-check_for_new data: in this task, you will check in the folder where the data is ingested if there are any new files (one or multiple). If so read it and pass it to the next task, otherwise mark the dag run status as skipped(Dag run status)
-make_predictions: in this task, you will make API call to the model service to make predictions on the data read by the previous task.
-Data ingestion job
-This job will be responsible for:
-
-Ingesting new data each n minutes
-Validating data quality of the ingested data
-Raising alerts if any data quality problem
-Monitoring dashboard
-This dashboard will be used to monitor:
-
-data quality problems detected by the data ingestion job
-data drift between training and serving data (example: during training, users average age was 45 and in serving, it is 60)
-It will be querying the data from the same database where the predictions are saved

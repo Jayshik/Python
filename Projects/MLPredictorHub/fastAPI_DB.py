@@ -3,6 +3,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from datetime import date, datetime
 import psycopg2
+import joblib
+import pandas as pd
 
 # Create a connection to the PostgreSQL database
 conn = psycopg2.connect(
@@ -17,15 +19,16 @@ cursor = conn.cursor()
 app = FastAPI()
 
 # Create a Pydantic model to represent the input data for the prediction
+
 class DiabetesData(BaseModel):
-    pregnancies: int
-    glucose: int
-    blood_pressure: int
-    skin_thickness: int
-    insulin: int
-    bmi: float
-    pedigree_function: float
-    age: int
+    Pregnancies: int
+    Glucose: int
+    BloodPressure: int
+    SkinThickness: int
+    Insulin: int
+    BMI: float
+    DiabetesPedigreeFunction: float
+    Age: int
 
 # Define a function to insert a new prediction record into the database
 def insert_prediction(prediction_date, pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, pedigree_function, age, prediction_result, prediction_source):
@@ -38,7 +41,56 @@ def insert_prediction(prediction_date, pregnancies, glucose, blood_pressure, ski
 
 # Placeholder function for making predictions
 def make_predictions(my_features: DiabetesData):
-    return 42
+
+    print("in predictions")
+    scaler = joblib.load("scaler.joblib")
+    model = joblib.load("model.joblib")
+
+        # Convert the input features to a DataFrame
+    df = pd.DataFrame([my_features.dict()])
+
+        # Perform data scaling with feature names
+    feature_names = df.columns
+    data_scaled = scaler.transform(df)
+    df_scaled = pd.DataFrame(data_scaled, columns=feature_names)
+
+        # Make predictions
+    prediction_result = model.predict(df_scaled)
+
+    out = int(prediction_result[0])
+    print(out,
+          'OUTPUT')
+
+    return out
+
+    #return 42
+
+# Define a FastAPI endpoint to load data from a CSV file and make predictions
+@app.post("/predict-from-csv")
+async def predict_from_csv(data: DiabetesData):
+    try:
+        # Decode the file content
+        print("in API")
+        prediction_result = make_predictions(data)
+
+
+        prediction_date = datetime.now()
+        pregnancies = data.Pregnancies
+        glucose = data.Glucose
+        blood_pressure = data.BloodPressure
+        skin_thickness = data.SkinThickness
+        insulin = data.Insulin
+        bmi = data.BMI
+        pedigree_function = data.DiabetesPedigreeFunction
+        age = data.Age
+        prediction_source = 'prediction job'
+
+        insert_prediction(prediction_date, pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, pedigree_function, age, prediction_result, prediction_source)
+
+        return {"predictions": prediction_result}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Define a FastAPI endpoint to handle the prediction request
 @app.post("/predict")
@@ -48,22 +100,21 @@ async def predict(data: DiabetesData):
     try:
         # Make prediction using input data
         # In this example, the prediction result is just the sum of all input features
+
         prediction_result = make_predictions(data)
         print(prediction_result)
 
         # Store prediction result and used features in the database
         prediction_date = datetime.now()
-        pregnancies = data.pregnancies
-        glucose = data.glucose
-        blood_pressure = data.blood_pressure
-        skin_thickness = data.skin_thickness
-        insulin = data.insulin
-        bmi = data.bmi
-        pedigree_function = data.pedigree_function
-        age = data.age
+        pregnancies = data.Pregnancies
+        glucose = data.Glucose
+        blood_pressure = data.BloodPressure
+        skin_thickness = data.SkinThickness
+        insulin = data.Insulin
+        bmi = data.BMI
+        pedigree_function = data.DiabetesPedigreeFunction
+        age = data.Age
         prediction_source = 'webapp'
-
-        print(pregnancies,glucose)
 
         insert_prediction(prediction_date, pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, pedigree_function, age, prediction_result, prediction_source)
 
@@ -80,7 +131,15 @@ def get_past_predictions(start_date, end_date, prediction_source):
         WHERE prediction_date BETWEEN %s AND %s
         AND prediction_source = %s
     """
-    cursor.execute(sql, (start_date, end_date, prediction_source))
+    sql_all = """
+        SELECT prediction_date, pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, pedigree_function, age, prediction_result
+        FROM predictions
+        WHERE prediction_date BETWEEN %s AND %s
+    """
+    if prediction_source == 'all':
+        cursor.execute(sql_all, (start_date, end_date))
+    else:
+        cursor.execute(sql, (start_date, end_date, prediction_source))
     rows = cursor.fetchall()
     past_predictions =[
         {
